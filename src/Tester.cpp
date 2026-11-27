@@ -31,7 +31,6 @@ namespace {
         std::string outcome;
         CCPoint deathPos;
         std::chrono::steady_clock::time_point started;
-        float oldTimeScale = 1;
     };
 
     TestRun g_run;
@@ -47,7 +46,6 @@ namespace {
         g_run.finished = true;
         g_run.outcome = std::move(outcome);
         g_run.deathPos = pos;
-        CCDirector::get()->getScheduler()->setTimeScale(g_run.oldTimeScale);
         // Leave the playtest outside of the game's own update.
         queueInMainThread([] {
             if (auto lel = editor(); lel && lel->m_playbackMode != PlaybackMode::Not) {
@@ -141,18 +139,16 @@ ApiResult testStart(matjson::Value const& input) {
     }
     double untilX = input.contains("until_x") ? input["until_x"].asDouble().unwrapOr(0) : lastObjectX + 90;
 
-    // Faster than real time, within the range GD's physics stays stable in.
-    double speed = input.contains("speed") ? input["speed"].asDouble().unwrapOr(1) : 1;
-    speed = std::clamp(speed, 0.25, 4.0);
+    // This build runs playtests at normal speed. Geode 6 / GD 2.2091's
+    // bindings do not expose CCScheduler::getTimeScale/setTimeScale.
+    if (input.contains("speed") && input["speed"].asDouble().unwrapOr(1) != 1.0) {
+        return ApiResult::error(400, "Custom test speed is unavailable; use speed 1 or omit the speed field.");
+    }
 
     g_run = TestRun{};
     g_run.inputs = std::move(inputs);
     g_run.untilX = untilX;
     g_run.started = std::chrono::steady_clock::now();
-    auto scheduler = CCDirector::get()->getScheduler();
-    g_run.oldTimeScale = scheduler->getTimeScale();
-    scheduler->setTimeScale(static_cast<float>(speed));
-
     lel->m_editorUI->onPlaytest(nullptr);
     g_run.startX = lel->m_player1 ? lel->m_player1->getPositionX() : 0;
     g_run.nextPathX = g_run.startX;
