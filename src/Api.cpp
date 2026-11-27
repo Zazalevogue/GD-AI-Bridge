@@ -554,7 +554,7 @@ namespace {
             auto entry = matjson::makeObject({
                 {"id", mod->getID()},
                 {"version", mod->getVersion().toVString()},
-                {"enabled", mod->isEnabled()},
+                {"enabled", mod->isOrWillBeEnabled()},
                 {"loaded", mod->isLoaded()},
             });
             auto const& raw = mod->getMetadata().getRawJSON();
